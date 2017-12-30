@@ -1,12 +1,13 @@
 package ifcterminal
 
 import (
-	"os"
 	"reflect"
 	"text/template"
+	"bytes"
+	"go/format"
 )
 
-func GenerateInterfaceTerminalStruct(ifc reflect.Type) {
+func GenerateInterfaceTerminalStruct(ifc reflect.Type) []byte {
 	if ifc == nil {
 		panic("Please provide a non-nil go interface type")
 	}
@@ -20,16 +21,25 @@ func GenerateInterfaceTerminalStruct(ifc reflect.Type) {
 		"outs":    outArgumentsOf,
 	}).Parse(ifcTmplString))
 
-	err := ifcTmpl.Execute(os.Stderr, ifc)
+	var gencode bytes.Buffer
+
+	err := ifcTmpl.Execute(&gencode, ifc)
 	if err != nil {
 		panic(err)
 	}
+
+	// gofmt
+	pretty, err := format.Source(gencode.Bytes())
+	if err != nil {
+		panic(err)
+	}
+	return pretty
 }
 
 const ifcTmplString = `
 type {{.Name}}_X struct {
 	{{- range methods .}}
-	F_{{.Name}} {{.Type}}
+	_{{.Name}} {{.Type}}
 	{{- end}}
 }
 {{range methods .}}
@@ -38,7 +48,7 @@ func (terminal {{$.Name}}_X) {{.Name}}({{- range $i, $arg := ins .Type -}}
 {{- end}}) ({{- range outs .Type -}}
 	{{.}}, 
 {{- end}}) {
-	return terminal.F_{{.Name}}({{- range $i, $arg := ins .Type -}}
+	return terminal._{{.Name}}({{- range $i, $arg := ins .Type -}}
 		a{{$i}},  
 	{{- end}})
 }
