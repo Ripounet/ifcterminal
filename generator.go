@@ -49,9 +49,12 @@ type {{.Name}}_X struct {
 {{range methods .}}
 func (terminal {{$.Name}}_X) {{.Name}}({{- range $i, $arg := ins .Type -}}
 	a{{$i}} {{$arg}},
-{{- end}}) ({{- range outs .Type -}}
-	{{.}}, 
+{{- end}}) ({{- range $i, $arg := outs .Type -}}
+	out{{$i}} {{$arg}},
 {{- end}}) {
+	if terminal.Methods.{{.Name}} == nil {
+		return
+	}
 	return terminal.Methods.{{.Name}}({{- range $i, $arg := ins .Type -}}
 		a{{$i}},  
 	{{- end}})
