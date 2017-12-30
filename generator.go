@@ -48,7 +48,7 @@ type {{.Name}}_X struct {
 }
 {{range methods .}}
 func (terminal {{$.Name}}_X) {{.Name}}({{- range $i, $arg := ins .Type -}}
-	a{{$i}} {{$arg}}  
+	a{{$i}} {{$arg}},
 {{- end}}) ({{- range outs .Type -}}
 	{{.}}, 
 {{- end}}) {

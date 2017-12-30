@@ -35,4 +35,10 @@ func TestInterfaceTerminalStruct(t *testing.T) {
 		code := ifcterminal.GenerateInterfaceTerminalStruct(ty)
 		os.Stderr.Write(code)
 	}
+	{
+		var x *http.CookieJar
+		ty := reflect.TypeOf(x).Elem()
+		code := ifcterminal.GenerateInterfaceTerminalStruct(ty)
+		os.Stderr.Write(code)
+	}
 }
