@@ -36,11 +36,15 @@ func GenerateInterfaceTerminalStruct(ifc reflect.Type) []byte {
 	return pretty
 }
 
+// A struct can't have a Method and a Field with the same name.
+// So we introduce an intermediate name "Methods".
 const ifcTmplString = `
 type {{.Name}}_X struct {
-	{{- range methods .}}
-	_{{.Name}} {{.Type}}
-	{{- end}}
+	Methods struct {
+		{{- range methods .}}
+		{{.Name}} {{.Type}}
+		{{- end}}
+	}
 }
 {{range methods .}}
 func (terminal {{$.Name}}_X) {{.Name}}({{- range $i, $arg := ins .Type -}}
@@ -48,7 +52,7 @@ func (terminal {{$.Name}}_X) {{.Name}}({{- range $i, $arg := ins .Type -}}
 {{- end}}) ({{- range outs .Type -}}
 	{{.}}, 
 {{- end}}) {
-	return terminal._{{.Name}}({{- range $i, $arg := ins .Type -}}
+	return terminal.Methods.{{.Name}}({{- range $i, $arg := ins .Type -}}
 		a{{$i}},  
 	{{- end}})
 }

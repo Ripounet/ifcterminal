@@ -12,6 +12,12 @@ import (
 
 func TestInterfaceTerminalStruct(t *testing.T) {
 	{
+		var x *io.Reader
+		ty := reflect.TypeOf(x).Elem()
+		code := ifcterminal.GenerateInterfaceTerminalStruct(ty)
+		os.Stderr.Write(code)
+	}
+	{
 		var x *io.ReadWriter
 		ty := reflect.TypeOf(x).Elem()
 		code := ifcterminal.GenerateInterfaceTerminalStruct(ty)
