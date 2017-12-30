@@ -3,9 +3,9 @@ package ifcterminal_test
 import (
 	"io"
 	"net/http"
+	"os"
 	"reflect"
 	"testing"
-	"os"
 
 	"github.com/Ripounet/ifcterminal"
 )

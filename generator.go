@@ -1,11 +1,15 @@
 package ifcterminal
 
 import (
-	"reflect"
-	"text/template"
 	"bytes"
 	"go/format"
+	"reflect"
+	"text/template"
 )
+
+//
+// Using Reflection.
+//
 
 func GenerateInterfaceTerminalStruct(ifc reflect.Type) []byte {
 	if ifc == nil {
@@ -15,7 +19,7 @@ func GenerateInterfaceTerminalStruct(ifc reflect.Type) []byte {
 		panic("Please provide a go interface type, not a " + ifc.Kind().String())
 	}
 
-	var ifcTmpl = template.Must(template.New("").Funcs(template.FuncMap{
+	ifcTmpl := template.Must(template.New("").Funcs(template.FuncMap{
 		"methods": methodsOf,
 		"ins":     inArgumentsOf,
 		"outs":    outArgumentsOf,
