@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/importer"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -116,7 +117,7 @@ func runCode(code []byte) error {
 	if err != nil {
 		return err
 	}
-	// log.Println("Written to ", fpath)
+	log.Println("Written to ", fpath)
 	command := exec.Command("go", "run", fpath)
 	command.Stdout = os.Stdout
 	return command.Run()

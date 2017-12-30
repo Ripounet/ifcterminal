@@ -28,15 +28,20 @@ func GenerateInterfaceTerminalStruct(ifc reflect.Type) []byte {
 	var gencode bytes.Buffer
 
 	err := ifcTmpl.Execute(&gencode, struct {
-		Ifc        reflect.Type
-		TypeSuffix string
+		Ifc           reflect.Type
+		TypeSuffix    string
+		TargetPackage string
+		Imports       []string
 	}{
-		Ifc:        ifc,
-		TypeSuffix: "_X",
+		Ifc:           ifc,
+		TypeSuffix:    "_X",
+		TargetPackage: "whatever",
+		Imports:       findDependencies(ifc),
 	})
 	if err != nil {
 		panic(err)
 	}
+	//log.Println(string(gencode.Bytes()))
 
 	// gofmt
 	pretty, err := format.Source(gencode.Bytes())
@@ -49,6 +54,14 @@ func GenerateInterfaceTerminalStruct(ifc reflect.Type) []byte {
 // A struct can't have a Method and a Field with the same name.
 // So we introduce an intermediate name "Methods".
 const ifcTmplString = `
+package {{.TargetPackage}}
+
+import(
+	{{range .Imports -}}
+	"{{.}}"
+	{{end}}
+)
+
 type {{.Ifc.Name}}{{.TypeSuffix}} struct {
 	Methods struct {
 		{{- range methods .Ifc}}
@@ -98,4 +111,30 @@ func outArgumentsOf(t reflect.Type) (outs []reflect.Type) {
 		outs = append(outs, t.Out(i))
 	}
 	return outs
+}
+
+func findDependencies(ifc reflect.Type) (packages []string) {
+	importSet := make(map[string]bool)
+	importSet[ifc.PkgPath()] = true
+
+	for m := 0; m < ifc.NumMethod(); m++ {
+		t := ifc.Method(m).Type
+		for i := 0; i < t.NumIn(); i++ {
+			argType := t.In(i)
+			importSet[argType.PkgPath()] = true
+		}
+		for i := 0; i < t.NumOut(); i++ {
+			outType := t.Out(i)
+			importSet[outType.PkgPath()] = true
+		}
+	}
+
+	// Map to list
+	for p := range importSet {
+		if p == "" {
+			continue
+		}
+		packages = append(packages, p)
+	}
+	return packages
 }
