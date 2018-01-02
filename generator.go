@@ -2,8 +2,12 @@ package ifcterminal
 
 import (
 	"bytes"
+	"crypto"
 	"go/format"
+	"io"
+	"net/http"
 	"reflect"
+	"strings"
 	"text/template"
 )
 
@@ -11,12 +15,21 @@ import (
 // Using Reflection.
 //
 
-func GenerateInterfaceTerminalStruct(ifc reflect.Type) []byte {
+// GenerateInterfaceTerminalStruct produces a full go source file containing an implementation struct
+// of a given interface.
+//
+// typeSuffix: if feel like avoiding type name conflicts:  (interface "Reader", suffix "_X") -> struct "Reader_X"
+// targetPackage: set if you want to save the result file in a custom package. Default value is same (leaf) package name as ifc.
+func GenerateInterfaceTerminalStruct(ifc reflect.Type, typeSuffix string, targetPackage string) []byte {
 	if ifc == nil {
 		panic("Please provide a non-nil go interface type")
 	}
 	if ifc.Kind() != reflect.Interface {
 		panic("Please provide a go interface type, not a " + ifc.Kind().String())
+	}
+	if targetPackage == "" {
+		parts := strings.Split(ifc.PkgPath(), "/")
+		targetPackage = parts[len(parts)-1]
 	}
 
 	ifcTmpl := template.Must(template.New("").Funcs(template.FuncMap{
@@ -34,8 +47,8 @@ func GenerateInterfaceTerminalStruct(ifc reflect.Type) []byte {
 		Imports       []string
 	}{
 		Ifc:           ifc,
-		TypeSuffix:    "_X",
-		TargetPackage: "whatever",
+		TypeSuffix:    typeSuffix,
+		TargetPackage: targetPackage,
 		Imports:       findDependencies(ifc),
 	})
 	if err != nil {
@@ -117,16 +130,40 @@ func findDependencies(ifc reflect.Type) (packages []string) {
 	importSet := make(map[string]bool)
 	importSet[ifc.PkgPath()] = true
 
-	for m := 0; m < ifc.NumMethod(); m++ {
-		t := ifc.Method(m).Type
-		for i := 0; i < t.NumIn(); i++ {
-			argType := t.In(i)
-			importSet[argType.PkgPath()] = true
+	var traverse func(t reflect.Type)
+	traverse = func(t reflect.Type) {
+		if t.Name() != "" {
+			// A named type is self-sufficient
+			importSet[t.PkgPath()] = true
+			return
 		}
-		for i := 0; i < t.NumOut(); i++ {
-			outType := t.Out(i)
-			importSet[outType.PkgPath()] = true
+
+		switch t.Kind() {
+		case reflect.Ptr, reflect.Array, reflect.Chan, reflect.Slice:
+			traverse(t.Elem())
+			return
+		case reflect.Map:
+			traverse(t.Key())
+			traverse(t.Elem())
+			return
+		case reflect.Func:
+			for i := 0; i < t.NumIn(); i++ {
+				argType := t.In(i)
+				traverse(argType)
+			}
+			for i := 0; i < t.NumOut(); i++ {
+				outType := t.Out(i)
+				traverse(outType)
+			}
+			return
+		default:
+			// built-in primitives don't need imports
 		}
+	}
+
+	for k := 0; k < ifc.NumMethod(); k++ {
+		m := ifc.Method(k).Type
+		traverse(m)
 	}
 
 	// Map to list
@@ -137,4 +174,14 @@ func findDependencies(ifc reflect.Type) (packages []string) {
 		packages = append(packages, p)
 	}
 	return packages
+}
+
+// SomeFunctionalIfc : Just for the tests
+type SomeFunctionalIfc interface {
+	Instrument(func(http.CookieJar, io.Reader)) (int, map[reflect.Kind]string, func() crypto.Signer)
+}
+
+// SomeRecursiveType : Just for the tests
+type SomeRecursiveType interface {
+	Wrap(string) SomeRecursiveType
 }
